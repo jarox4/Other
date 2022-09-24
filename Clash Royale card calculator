@@ -1,0 +1,53 @@
+using System;
+
+namespace tt
+{
+    class MyClass
+    {
+        public static void Main()
+        {
+            card Card = new card();
+            Console.WriteLine("Enter attack: ");
+            Card.attack = Convert.ToInt32(Console.ReadLine());
+            Console.WriteLine("Enter hp: ");
+            Card.hp = Convert.ToInt32(Console.ReadLine());
+            Console.WriteLine("Enter first level: ");
+            Card.lvl1 = Convert.ToInt16(Console.ReadLine());
+            Console.WriteLine("Enter last level: ");
+            Card.lvl2 = Convert.ToInt16(Console.ReadLine());
+            Card.Calculation();
+        }
+    }
+    public class card
+    {
+        public card()
+        {
+            attack = 0;
+            hp = 0;
+            lvl1 = 1;
+            lvl2 = 1;
+        }
+        public void Calculation()
+        {
+            int diff = lvl2 - lvl1;
+            double mod = Math.Pow(1.10, diff);
+            attack2 = attack * mod;
+            hp2 = hp * mod;
+            Console.WriteLine($"Attack will be {attack2}");
+            Console.WriteLine($"Hp will be {hp2}");
+        }
+        public void outputing () 
+        {
+            Console.WriteLine($"Attack is {attack}");
+            Console.WriteLine($"Hp is {hp}");
+            Console.WriteLine($"First level is {lvl1}");
+            Console.WriteLine($"Second level is is {lvl2}");
+        }
+        public int attack;
+        public int hp;
+        public short lvl1;
+        public short lvl2;
+        public double attack2;
+        public double hp2;
+    }
+}
