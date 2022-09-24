@@ -1,0 +1,158 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+namespace _15
+{
+    class _15
+    {
+        public static void Main()
+        {
+            // if you want to look at work of PriorityQueue so take away the next comment
+            //RegularStuff();
+        }
+        public static void RegularStuff() 
+        {
+            int numberToCreate = new Random().Next(21);
+
+            int numberToGet = numberToCreate;
+
+            PriorityQueue<Package> test = new PriorityQueue<Package>();
+
+            for (int i = 0; i < numberToCreate; i++)
+            {
+                test.Enqueue(PackageFactory());
+            }
+
+            Console.WriteLine($"Got {test.Count} packages");
+
+            Console.WriteLine("Starting to deliver them");
+
+            for (; numberToGet > 0; numberToGet--)
+            {
+                Package pack = test.Dequeue();
+
+                if (pack != null)
+                {
+                    Console.Write("Deliverying a package with ");
+                    switch (pack.Priority)
+                    {
+                        case 1:
+                            Console.Write("high priority");
+                            break;
+                        case 2:
+                            Console.Write("medium priority");
+                            break;
+                        case 3:
+                            Console.Write("low priority");
+                            break;
+                    }
+                    Console.WriteLine();
+                }
+            }
+        }
+        public static Package PackageFactory() 
+        {
+            //returns randomly generated Package
+            return new Package(new Random().Next(4));
+        }
+    }
+    class PriorityQueue <T>: IEnumerable
+        where T: IPrioritizable
+    {
+        private Queue _queueHigh = new Queue();
+        private Queue _queueMedium = new Queue();
+        private Queue _queueLow = new Queue();
+
+        public Package Peek() 
+        {
+            Queue topQueue = TopQueue();
+
+            return topQueue.Peek() as Package;
+        }
+
+        public void Enqueue(Package package) 
+        {
+            switch (package.Priority) 
+            {
+                case 1:
+                    _queueHigh.Enqueue(package);
+                    break;
+                case 2:
+                    _queueMedium.Enqueue(package);
+                    break;
+                case 3:
+                    _queueLow.Enqueue(package);
+                    break;
+                default:
+                    package = _15.PackageFactory();
+                    this.Enqueue(package);
+                    break;
+            }
+        }
+
+        public Package Dequeue() 
+        {
+            Queue top = TopQueue();
+            if (top.Count > 0)
+            {
+                return (Package)top.Dequeue();
+            }
+            else 
+            {
+                return null;
+            }
+        }
+
+        private Queue TopQueue () 
+        {
+            if (_queueHigh.Count > 0) 
+            {
+                return _queueHigh;
+            }
+            if (_queueMedium.Count > 0) 
+            {
+                return _queueMedium;
+            }
+            return _queueLow;
+        }
+
+        public int Count 
+        { 
+            get
+            {
+                return _queueHigh.Count + _queueMedium.Count + _queueLow.Count;
+            } 
+        }
+
+        public IEnumerator GetEnumerator() 
+        {
+            return TopQueue().GetEnumerator();
+        }
+    }
+    class Package: IPrioritizable
+    {
+        public Package(int value) 
+        {
+            if (value > 0 && value < 4) 
+            {
+                priority = value;
+            }
+        }
+
+        private int priority { get; set; }
+
+        public int Priority 
+        { 
+            get 
+            { 
+                return priority; 
+            }
+        }
+    }
+
+    interface IPrioritizable 
+    {
+        public int Priority { get;}
+    }
+}
