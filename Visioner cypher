@@ -1,0 +1,147 @@
+using System;
+using System.Collections;
+using System.Linq;
+using System.IO;
+using System.Security.Cryptography.X509Certificates;
+using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Text.Json.Serialization;
+using StringHelper;
+
+namespace Olimp
+{
+    class Program
+    {
+        static char[] alphabet = StringHelper.Data.alphabet;
+        static char[] specialSigns = StringHelper.Data.specialSigns;
+        public static void Main()
+        {
+            Console.WriteLine("Write message to encrypt: ");
+            string message = Console.ReadLine();
+            Console.WriteLine("Write key: ");
+            string key = Console.ReadLine();
+            var result = VisionerCypher(message, key);
+            Console.WriteLine($"Your crypted message - {result}\n");
+
+            Console.WriteLine("Write message to decrypt: ");
+            message = Console.ReadLine();
+            Console.WriteLine("Write key: ");
+            key = Console.ReadLine();
+            result = Decypher(result, key);
+            Console.WriteLine($"Your decrypted message - {result}");
+        }
+        public static string VisionerCypher(string oldMessage, string key)
+        {
+            var originalMessage = oldMessage;       //im lazy enough to not make an additional array for upper letters
+            oldMessage = oldMessage.ToLower();
+            byte currentKeyLetterIndex = 0;
+            StringBuilder messageWithAppliedKey = new StringBuilder(oldMessage);
+            for (int i = 0; i < messageWithAppliedKey.Length; i++)
+            {
+                if (!alphabet.Contains(messageWithAppliedKey[i]))
+                {
+                    continue;
+                }
+                messageWithAppliedKey[i] = key[currentKeyLetterIndex];
+                currentKeyLetterIndex++;
+                if (currentKeyLetterIndex == key.Length)
+                {
+                    currentKeyLetterIndex = 0;
+                }
+            }
+
+            List<int> indexesOfNewLetter = new List<int>();
+            for (int i = 0; i < messageWithAppliedKey.Length; i++) 
+            {
+                if (!alphabet.Contains(messageWithAppliedKey[i])) 
+                {
+                    indexesOfNewLetter.Add(-(Array.IndexOf(specialSigns, messageWithAppliedKey[i])));
+                    continue;
+                }
+                int shift = Array.IndexOf(alphabet, messageWithAppliedKey[i]);
+                int currentIndexInAlphabet = Array.IndexOf(alphabet, oldMessage[i]);
+                int newIndex = currentIndexInAlphabet + shift;
+                if (newIndex >= alphabet.Length) 
+                {
+                    newIndex -= alphabet.Length;
+                }
+                indexesOfNewLetter.Add(newIndex);
+            }
+            string result = new String("");
+            for (int i = 0; i < indexesOfNewLetter.Count(); i++) 
+            {
+                if (indexesOfNewLetter[i] < 0) 
+                {
+                    result += specialSigns[- indexesOfNewLetter[i]];
+                    continue;
+                }
+                char newLetter = alphabet[indexesOfNewLetter[i]];
+                if (char.IsUpper(originalMessage[i])) 
+                {
+                    newLetter = char.ToUpper(newLetter);
+                }
+                result += newLetter;
+            }
+            return result;
+        }
+        public static string Decypher(string cryptedMessage, string key) 
+        {
+            string originalMessage = cryptedMessage;
+            cryptedMessage = cryptedMessage.ToLower();
+            string messageWithAppliedKey = "";
+            int currentKeyLetterIndex = 0;
+            for (int i = 0; i < cryptedMessage.Length; i++) 
+            {
+                if (!alphabet.Contains(cryptedMessage[i])) 
+                {
+                    messageWithAppliedKey += cryptedMessage[i];
+                    continue;
+                }
+                messageWithAppliedKey += key[currentKeyLetterIndex];
+                currentKeyLetterIndex++;
+                if (currentKeyLetterIndex == key.Length) 
+                {
+                    currentKeyLetterIndex = 0;
+                }
+            }
+
+            List<int> indexesOfCorrectLetters = new List<int>();
+            for (int i = 0; i < messageWithAppliedKey.Length; i++) 
+            {
+                if (!alphabet.Contains(messageWithAppliedKey[i]))
+                {
+                    indexesOfCorrectLetters.Add(-Array.IndexOf(specialSigns, messageWithAppliedKey[i]));
+                    continue;
+                }
+                int shift = Array.IndexOf(alphabet, messageWithAppliedKey[i]);
+                int index = Array.IndexOf(alphabet, cryptedMessage[i]) - shift;
+                if (index < 0) 
+                {
+                    index = alphabet.Length + index;
+                }
+                indexesOfCorrectLetters.Add(index);
+            }
+
+            string decryptedMessage = "";
+            for (int i = 0; i < indexesOfCorrectLetters.Count(); i++) 
+            {
+                if (indexesOfCorrectLetters[i] < 0) 
+                {
+                    decryptedMessage += specialSigns[-indexesOfCorrectLetters[i]];
+                    continue;
+                }
+                char letter = alphabet[indexesOfCorrectLetters[i]];
+                if (char.IsUpper(originalMessage[i])) 
+                {
+                    letter = char.ToUpper(letter);
+                }
+                decryptedMessage += letter;
+            }
+            return decryptedMessage;
+        }
+    }
+}
