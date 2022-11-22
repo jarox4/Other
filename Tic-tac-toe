@@ -1,0 +1,223 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Reflection.Metadata.Ecma335;
+using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading;
+using System.Linq;
+
+namespace Program
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            TicTacToe.Start();
+        }
+    }
+    class TicTacToe
+    {
+        abstract class AbstactPlayer 
+        {
+            public abstract void MakeTurn(ref char[,] map);
+        }
+        class Player: AbstactPlayer
+        {
+            public override void MakeTurn(ref char[,] map)
+            {
+                Console.WriteLine("Write cell coordinate: ");
+                var coordinates = Console.ReadLine().Split(' ');
+                if (map[int.Parse(coordinates[0]), int.Parse(coordinates[1])] != default(char))
+                {
+                    Console.WriteLine("This cell is already taken, choose another one");
+                    this.MakeTurn(ref map);
+                }
+                else
+                {
+                    enemy.AddTakenCell(new Tuple<int, int>(int.Parse(coordinates[0]), int.Parse(coordinates[1])));
+                    map[int.Parse(coordinates[0]), int.Parse(coordinates[1])] = 'X';
+                }
+            }
+        }
+        class Bot : Player
+        {
+            public Bot()
+            {
+                for (int i = 1; i < map.GetLength(0); i++) 
+                {
+                    for (int k = 1; k < map.GetLength(1); k++) 
+                    {
+                        Tuple<int, int> currentCoordinate = new Tuple<int, int>(i, k);
+                        freeSpace.Add(currentCoordinate);
+                    }
+                }
+            }
+            private List<Tuple<int, int>> freeSpace = new List<Tuple<int, int>>();
+            public void AddTakenCell(Tuple<int, int> coordinates) 
+            {
+                freeSpace.Remove(coordinates);
+            }
+            public override void MakeTurn(ref char[,] map)
+            {
+                Random random = new Random();
+                //making an illusion of thinking
+                int time = random.Next(1000, 3000);
+                Thread.Sleep(time);
+                Tuple<int, int> coordinates = freeSpace[random.Next(0, freeSpace.Count())];
+                freeSpace.Remove(coordinates);
+                map[coordinates.Item1, coordinates.Item2] = 'O';
+            }
+        }
+
+        static Player player;
+        static Bot enemy;
+        static byte currentTurn;
+        //if currentTurn is 0 - its 1-st player's turn
+        //if currentTurn is 1 - its 2-nd player's turn
+        static char[,] map;
+        //if flag is 1, game is won by one of the players
+        //if flag is -1, game is ended with draw
+        //if flag is 0, game is running
+        static int flag = 0;
+        public static void Start()
+        {
+            Initialize();
+            Run();
+        }
+        private static void Initialize()
+        {
+            map = new char[4, 4];
+            for (int i = 0; i < map.GetLength(0); i++) 
+            {
+                map[i, 0] = (i).ToString()[0];
+                map[0, i] = (i).ToString()[0];
+            }
+            player = new Player();
+            enemy = new Bot();
+            currentTurn = 0;
+        }
+        private static void ShowBoard()
+        {
+            for (int i = 0; i < map.GetLength(0); i++)
+            {
+                for (int k = 0; k < map.GetLength(1); k++)
+                {
+                    Console.Write($"{map[i, k]}");
+                    if (k + 1 < map.GetLength(1))
+                    {
+                        Console.Write(" | ");
+                    }
+                }
+                if (i + 1 < map.GetLength(0))
+                {
+                    Console.Write('\n');
+                    Console.Write("-------------");
+                    Console.Write('\n');
+                }
+            }
+            Console.Write('\n');
+        }
+        private static void Run()
+        {
+            do
+            {
+                Console.WriteLine("Player 1: X, player 2: O");
+                ShowBoard();
+                if (currentTurn == 0)
+                {
+                    Console.WriteLine("It's your turn!");
+                    player.MakeTurn(ref map);
+                }
+                else 
+                {
+                    Console.WriteLine("Enemy's turn");
+                    enemy.MakeTurn(ref map);
+                }
+                if (currentTurn == 1)
+                {
+                    currentTurn = 0;
+                }
+                else 
+                {
+                    currentTurn = 1;
+                }
+                flag = CheckIfWon();
+            } while (flag == 0);
+            ShowBoard();
+            if (flag == 1)
+            {
+                if (currentTurn == 0)
+                {
+                    Console.WriteLine("You lose");
+                }
+                else 
+                {
+                    Console.WriteLine("You win");
+                }
+            }
+            else 
+            {
+                Console.WriteLine("Draw");
+            }
+        }
+        private static int CheckIfWon() 
+        {
+            #region Horizontal check
+            if (map[2,2] == map[3,2] && map[1,2] == map[2,2] && map[2, 2] != default(char)) 
+            {
+                return 1;
+            }
+            if (map[2, 1] == map[3, 1] && map[1, 1] == map[2, 1] && map[2, 1] != default(char)) 
+            {
+                return 1;
+            }
+            if (map[2, 3] == map[3, 3] && map[1, 3] == map[2, 3] && map[2, 3] != default(char)) 
+            {
+                return 1;
+            }
+            #endregion
+
+
+            #region Vertical check
+            if (map[2,2] == map[2,1] && map[2,2] == map[2,3] && map[2,3] != default(char)) 
+            {
+                return 1;
+            }
+            if (map[1, 2] == map[1, 1] && map[1, 2] == map[1, 3] && map[1, 3] != default(char))
+            {
+                return 1;
+            }
+            if (map[3, 2] == map[3, 1] && map[3, 2] == map[3, 3] && map[3, 3] != default(char))
+            {
+                return 1;
+            }
+            #endregion
+
+
+            #region Diagonal check
+            if (map[2,2] == map[1,1] && map[2,2] == map[3,3] && map[3, 3] != default(char)) 
+            {
+                return 1;
+            }
+            if (map[2, 2] == map[1, 3] && map[2, 2] == map[3, 1] && map[3, 1] != default(char))
+            {
+                return 1;
+            }
+            #endregion
+            //check if all the map is taken
+            for (int i = 1; i < map.GetLength(0); i++) 
+            {
+                for (int k = 1; k < map.GetLength(1); k++) 
+                {
+                    if (map[i,k] == default(char)) 
+                    {
+                        return 0;
+                    }
+                }
+            }
+            return -1;
+        }
+    }
+}
