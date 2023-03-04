@@ -1,0 +1,289 @@
+namespace Program
+{
+    class Work
+    {
+        public static Work Instance { get; set; }
+        public static void Main() {
+            Instance = new Work();
+            Instance.Start();
+        }
+
+        private void Start() {
+            HeistAnalyze work = new HeistAnalyze();
+            work.Start();
+        }
+    }
+
+    class HeistAnalyze {
+        private HeistData _data;
+        public void Start() {
+            Init();
+
+            List<Tuple<short,int>> approaches = Calculate();
+            ShowData(approaches);
+
+            End(approaches);
+        }
+
+        #region Advice
+        private void End(List<Tuple<short, int>> approaches, float? _admissiblePercent = null) {
+            Tuple<short, int> alone = approaches.Find(x => x.Item1 == 1);
+            Tuple<short,int> duo = approaches.Find(x => x.Item1 == 2);
+
+            Console.WriteLine();
+            if (alone.Item2 > duo.Item2)
+                Console.WriteLine("Going solo is advised");
+            if(alone.Item2 < duo.Item2) {
+                float admissibleDifference = _admissiblePercent == null ? 0.05f : (float)_admissiblePercent;
+
+                float difference = (float)(duo.Item2 - alone.Item2) / duo.Item2;
+                if(difference > admissibleDifference) {
+                    Console.WriteLine("Going duo is advised");
+                }
+                else {
+                    Console.WriteLine("Going solo is advised");
+                }
+            }
+        }
+        #endregion
+
+        #region Displaying data
+        private void ShowData(List<Tuple<short, int>> approaches) {
+            Tuple<short, int>[] bestApproaches = approaches.ToArray()[0..3];
+
+            Console.WriteLine("Best approaches are: ");
+            for(int i = 0; i < bestApproaches.Length; i++) {
+                Console.WriteLine($"{i+1}.{bestApproaches[i].Item1} participiants with ${bestApproaches[i].Item2}");
+            }
+        }
+        #endregion
+
+        #region Initializing
+        private void Init() {
+            HeistData.PrimaryTarget primTarget = GetMainTarget();
+
+            float increaseCoefficient = primTarget._increaseCoefficient;
+            List<HeistData.AdditionalTarget> secTargets = GetAdditionalTargets(increaseCoefficient);
+
+            _data = new HeistData(primTarget, secTargets.ToArray());
+        }
+        private HeistData.PrimaryTarget GetMainTarget() {
+            HeistData.PrimaryTarget.Type type;
+            int amountOfMainTargets = 4;
+
+            for(int i = 0; i < amountOfMainTargets; i++) {
+                Console.WriteLine($"If you have {(HeistData.PrimaryTarget.Type)i} - type {i}");
+            }
+            short number = short.Parse(Console.ReadLine());
+            if (number > -1 && number < 4)
+                type = (HeistData.PrimaryTarget.Type)number;
+            else
+                throw new InvalidDataException();
+            HeistData.PrimaryTarget primTarget = new(type);
+            return primTarget;
+        }
+        private List<HeistData.AdditionalTarget> GetAdditionalTargets (float increaseCoefficient) {
+            List<HeistData.AdditionalTarget> targets = new List<HeistData.AdditionalTarget>();
+            int maxValue = (int)Enum.GetValues<HeistData.AdditionalTarget.Type>().Cast<HeistData.AdditionalTarget.Type>().Last();
+            for(int i = 0; i <= maxValue; i++) {
+                Console.WriteLine($"Enter amount of {(HeistData.AdditionalTarget.Type)i}: ");
+                HeistData.AdditionalTarget.Type type = (HeistData.AdditionalTarget.Type)i;
+                short amount = short.Parse(Console.ReadLine());
+                HeistData.AdditionalTarget target = new HeistData.AdditionalTarget(type, amount, increaseCoefficient);
+                targets.Add(target);
+            }
+            return targets;
+        }
+        #endregion
+
+        #region Calculating
+        private List<Tuple<short, int>> Calculate() {
+            List<Tuple<short, int>> approaches = new List<Tuple<short, int>>();
+            int amountOfPeopleMax = 4;
+            for (short i = 1; i <= amountOfPeopleMax; i++)
+                approaches.Add(new Tuple<short,int>(i, Compute(i)));
+
+            approaches = approaches.OrderBy(x => x.Item2).ToList();
+            approaches.Reverse();
+
+            return approaches;
+        }
+        private int Compute (int amountOfPeople) {
+            float fixedFeePercent = 0.1f;
+
+            float cost = GetCost(amountOfPeople);
+            cost *= 1 - fixedFeePercent;
+            if(amountOfPeople > 1) {
+                float participianMinPercent = 0.2f;
+                float personalPercent = 1 - ((amountOfPeople - 1) * participianMinPercent);
+
+                cost *= personalPercent;
+            }
+            int gottenValue = (int)Math.Round(cost);
+            return gottenValue;
+        }
+        private int GetCost(int amountOfPeople) {
+            HeistData.AdditionalTarget.Type[] values;
+            if(amountOfPeople == 1) {
+                values = HeistData.Values.outsideValues;
+            }
+            else if(amountOfPeople > 1) {
+                values = HeistData.Values.insideValues;
+            }
+            else {
+                throw new InvalidDataException();
+            }
+            int result = GetCostOfAdditionalTargets(values, amountOfPeople);
+
+            int primTargetValue = _data._primaryTarget._cost;
+            result += primTargetValue;
+            return result;
+        }
+        private int GetCostOfAdditionalTargets(HeistData.AdditionalTarget.Type[] types, int amountOfPeople) {
+            int cost = 0;
+            float bagSpace = 1f * amountOfPeople;
+            Array.Sort(types);
+
+            for (int i = 0; i < types.Length; i++) {
+                var additionalTarget = new HeistData.AdditionalTarget(_data._additionalTargets.Find(target => target._type == types[i]));
+                while (bagSpace > 0f && additionalTarget._amount > 0) {
+                    float targetAmount = 1f;
+                    if (additionalTarget._amount < 1 && additionalTarget._amount > 0)
+                        targetAmount = additionalTarget._amount;
+                    additionalTarget.DecreaseAmount(targetAmount);
+                    bagSpace -= additionalTarget._spaceTaken * targetAmount;
+                    cost += (int)Math.Round(additionalTarget._cost * targetAmount);
+
+                    if (bagSpace % 1 > 0.99f)
+                        bagSpace = (float)Math.Round(bagSpace);
+                    
+                }
+            }
+
+            return cost;
+        }
+        #endregion
+
+    }
+
+    public class HeistData
+    {
+        public HeistData Instance;
+        public class PrimaryTarget {
+
+            public enum Type {
+                PinkDiamond = 0,
+                Papers = 1,
+                Necklace = 2,
+                Tequila = 3
+            }
+
+            public Type _type { get; private set; }
+            public int _cost {get; private set;}
+            public float _increaseCoefficient {get; private set;}
+            public PrimaryTarget(Type type) {
+                _type = type;
+                _cost =Values.primaryTargetPrice[type];
+                _increaseCoefficient = Values.primaryTargetIncreaseCoefficient[type];
+            }
+        }
+        public class AdditionalTarget
+        {
+            //Type MUST be in descending order from the most expensive to the cheapest
+            public enum Type
+            {
+                Gold = 0,
+                Cocaine = 1,
+                Weed = 2,
+                CashInside = 3,
+                CashOutside = 4
+            }
+
+            public HeistData parent;
+
+            public float _spaceTaken { get; private set; }
+            public int _cost {get; private set;}
+            public float _amount {get; private set;}
+            public Type _type { get; private set; }
+
+            public AdditionalTarget(float spaceTaken, int cost, float amount, Type type) {
+               _spaceTaken = spaceTaken;
+                _cost = cost;
+                _amount = amount;
+                _type = type;
+            }
+            public AdditionalTarget(Type type, float amount, float increaseCoefficient = 1) {
+                var values = Values.secondaryTargetPrice[type];
+                _spaceTaken = values.Item1;
+                _cost = (int)Math.Round(values.Item2 * increaseCoefficient);
+                _amount = amount;
+                _type = type;
+            }
+            public AdditionalTarget(AdditionalTarget target) {
+                _type = target._type;
+                _spaceTaken = target._spaceTaken;
+                _cost = target._cost;
+                _amount = target._amount;
+            }
+            public void DecreaseAmount(float value) {
+                _amount -= value;
+                if (_amount < 0)
+                    throw new InvalidOperationException();
+            }
+        }
+
+        public class Values {
+            public static Dictionary<AdditionalTarget.Type, Tuple<float, int>> secondaryTargetPrice = new Dictionary<AdditionalTarget.Type, Tuple<float, int>> {
+                { AdditionalTarget.Type.Gold, new Tuple<float,int> (2f / 3f, 330000) },
+                { AdditionalTarget.Type.Cocaine, new Tuple<float, int> (0.5f, 220000) },
+                { AdditionalTarget.Type.Weed, new Tuple<float, int> (1f / 3f, 110000) },
+                { AdditionalTarget.Type.CashInside, new Tuple<float, int> (0.25f, 89000) },
+                { AdditionalTarget.Type.CashOutside, new Tuple<float, int> (0.25f, 89000) }
+            };
+
+            public static Dictionary<PrimaryTarget.Type, int> primaryTargetPrice = new Dictionary<PrimaryTarget.Type, int> {
+                { PrimaryTarget.Type.PinkDiamond, 1300000},
+                {PrimaryTarget.Type.Papers, 1100000},
+                {PrimaryTarget.Type.Necklace, 1000000},
+                {PrimaryTarget.Type.Tequila, 1000000}
+            };
+
+            public static Dictionary<PrimaryTarget.Type, float> primaryTargetIncreaseCoefficient = new Dictionary<PrimaryTarget.Type, float> {
+                {PrimaryTarget.Type.PinkDiamond, 1f }, 
+                {PrimaryTarget.Type.Papers, 1.1f }, 
+                {PrimaryTarget.Type.Necklace, 1.15f }, 
+                {PrimaryTarget.Type.Tequila, 1.2f }
+            };
+
+
+            public static AdditionalTarget.Type[] insideValues = new AdditionalTarget.Type[] {
+                #region only-inside values
+                AdditionalTarget.Type.Gold,
+                AdditionalTarget.Type.CashInside,
+                #endregion
+                #region outside values
+                AdditionalTarget.Type.Cocaine,
+                AdditionalTarget.Type.CashOutside,
+                AdditionalTarget.Type.Weed
+                #endregion
+            };
+
+            public static AdditionalTarget.Type[] outsideValues = new AdditionalTarget.Type[] {
+                AdditionalTarget.Type.Cocaine,
+                AdditionalTarget.Type.CashOutside,
+                AdditionalTarget.Type.Weed
+            };
+        }
+
+        public PrimaryTarget _primaryTarget { get; private set; }
+        public List<AdditionalTarget> _additionalTargets { get; private set; }
+        public HeistData(PrimaryTarget primaryTarget, params AdditionalTarget[] additionalTarget) {
+            _additionalTargets = new List<AdditionalTarget>();
+            _additionalTargets.AddRange(additionalTarget);
+            _primaryTarget = primaryTarget;
+
+            if (Instance == null)
+                Instance = this;
+        }
+    }
+}
